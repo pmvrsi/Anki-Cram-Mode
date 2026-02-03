@@ -1,44 +1,47 @@
 from aqt import mw
 from aqt.qt import *
-from aqt.utils import tooltip
+from aqt.utils import showInfo, tooltip
 
-# --- Configuration ---
 CRAM_DECK_NAME = "Cram Mode"
-ICON_START = "⚡ Cram"    
-ICON_STOP = "🛑 Stop Cram"
+TEXT_START = "⚡ Cram"     
+TEXT_STOP = "🛑 Stop"
 
 class CramModeAddon:
     def __init__(self):
         self.action = None
+        self.toolbar = None
         self.setup_ui()
-      
+        
         mw.addonManager.setConfigAction(__name__, self.show_config)
         from aqt.gui_hooks import state_did_reset
         state_did_reset.append(self.update_ui_state)
 
     def setup_ui(self):
-
-        self.action = QAction(ICON_START, mw)
+        self.action = QAction(TEXT_START, mw)
         self.action.setShortcut("Ctrl+Shift+C")
         self.action.triggered.connect(self.toggle_cram)
         
-        mw.form.mainToolBar.addAction(self.action)
-        
-       
         mw.form.menuTools.addAction(self.action)
+        
+        if hasattr(mw.form, 'mainToolBar'):
+            mw.form.mainToolBar.addAction(self.action)
+        else:
+            self.toolbar = QToolBar("Cram Mode")
+            self.toolbar.setObjectName("CramModeToolbar")
+            self.toolbar.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
+            self.toolbar.addAction(self.action)
+            mw.addToolBar(Qt.ToolBarArea.TopToolBarArea, self.toolbar)
 
     def is_cramming(self):
-        """Check if the Cram Mode deck currently exists."""
+        if not mw.col: return False
         return bool(mw.col.decks.id(CRAM_DECK_NAME))
 
     def update_ui_state(self):
-        """Update the button text/icon based on whether we are cramming."""
         if self.is_cramming():
-            self.action.setText(ICON_STOP)
-            # You could also set a red background or icon here
+            self.action.setText(TEXT_STOP)
             self.action.setToolTip("Click to Restore Original Decks")
         else:
-            self.action.setText(ICON_START)
+            self.action.setText(TEXT_START)
             self.action.setToolTip("Click to Create Filtered Cram Deck")
 
     def toggle_cram(self):
@@ -53,19 +56,17 @@ class CramModeAddon:
         current_name = current_deck['name']
         
         if current_name == CRAM_DECK_NAME:
-            tooltip("You are already inside the Cram deck!", period=2000)
+            tooltip("Already in Cram Mode!", period=1500)
             return
 
-        # Create/Rebuild Dynamic Deck
         cram_did = mw.col.decks.id(CRAM_DECK_NAME)
         if not cram_did:
             cram_did = mw.col.decks.new_dyn(CRAM_DECK_NAME)
         
         deck = mw.col.decks.get(cram_did)
         
-        # Configuration: Random order (5), No rescheduling
         search_term = f'deck:"{current_name}"'
-        deck['terms'] = [[search_term, 9999, 5]] # 5 = Random Order
+        deck['terms'] = [[search_term, 9999, 5]]
         deck['resched'] = False 
         deck['dyn'] = 1
         
@@ -74,18 +75,22 @@ class CramModeAddon:
         mw.col.decks.select(cram_did)
         mw.reset()
         
-        tooltip(f"🔥 Cram Mode ON: {current_name}", period=1500)
+        try:
+            tooltip(f"🔥 Cramming: {current_name}", period=1500)
+        except:
+            showInfo(f"Cram Mode ON: {current_name}")
 
     def stop_cram_mode(self):
         cram_did = mw.col.decks.id(CRAM_DECK_NAME)
         if cram_did:
             mw.col.decks.rem(cram_did)
             mw.reset()
-            tooltip("✅ Cram Mode OFF: Decks Restored", period=1500)
+            try:
+                tooltip("✅ Decks Restored", period=1500)
+            except:
+                showInfo("Cram Mode OFF")
 
     def show_config(self):
-        # Placeholder if you add a settings menu later
-        tooltip("No configuration needed for Cram Mode.")
+        showInfo("No configuration needed.")
 
-# Initialize the Add-on
 cram_mode = CramModeAddon()
