@@ -6,6 +6,7 @@ CRAM_DECK_NAME = "Cram Mode"
 
 class CramModeAddon:
     def __init__(self):
+        self.original_deck_id = None
         self.setup_ui()
 
     def setup_ui(self):
@@ -25,6 +26,8 @@ class CramModeAddon:
             tooltip("Already in Cram Mode!", period=1500)
             return
 
+        self.original_deck_id = current_deck['id']
+        
         cram_did = mw.col.decks.id(CRAM_DECK_NAME)
         if not cram_did:
             cram_did = mw.col.decks.new_dyn(CRAM_DECK_NAME)
@@ -33,26 +36,33 @@ class CramModeAddon:
         
         search_term = f'deck:"{current_name}"'
         deck['terms'] = [[search_term, 9999, 5]]
-        deck['resched'] = False 
-        deck['dyn'] = 1
+        deck['resched'] = False
         
         mw.col.decks.save(deck)
         mw.col.sched.rebuild_dyn(cram_did)
         mw.col.decks.select(cram_did)
         mw.reset()
         
+        card_count = mw.col.card_count(cram_did)
         try:
-            tooltip(f"🔥 Cramming: {current_name}", period=1500)
+            tooltip(f"🔥 Cramming: {current_name} ({card_count} cards)", period=2000)
         except:
-            showInfo(f"Cram Mode ON: {current_name}")
+            showInfo(f"Cram Mode ON: {current_name} ({card_count} cards)")
 
     def stop_cram_mode(self):
         cram_did = mw.col.decks.id(CRAM_DECK_NAME)
         if cram_did:
-            mw.col.decks.rem(cram_did)
+            mw.col.sched.empty_dyn(cram_did)
+            mw.col.decks.rem(cram_did, cardsToo=False)
+            
+            if self.original_deck_id:
+                mw.col.decks.select(self.original_deck_id)
+                self.original_deck_id = None
+            
             mw.reset()
+            
             try:
-                tooltip("✅ Decks Restored", period=1500)
+                tooltip("✅ Cram Mode OFF - Cards Returned", period=2000)
             except:
                 showInfo("Cram Mode OFF")
         else:
