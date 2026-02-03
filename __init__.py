@@ -40,10 +40,18 @@ class CramModeAddon:
         
         mw.col.decks.save(deck)
         mw.col.sched.rebuild_dyn(cram_did)
+        
+        card_count = mw.col.card_count(cram_did)
+        
+        if card_count == 0:
+            mw.col.sched.empty_dyn(cram_did)
+            mw.col.decks.rem(cram_did, cardsToo=False)
+            tooltip("⚠️ No cards found in this deck!", period=2000)
+            return
+        
         mw.col.decks.select(cram_did)
         mw.reset()
         
-        card_count = mw.col.card_count(cram_did)
         try:
             tooltip(f"🔥 Cramming: {current_name} ({card_count} cards)", period=2000)
         except:
